@@ -19,7 +19,7 @@
 
       <button @click="togglePlayback">{{!playbackInterval ? 'Play' : 'Stop'}}</button>
     </list-box>
-    <div ref="svgContainer" class="canvas"></div>
+    <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" tabindex="0"></div>
   </div>
 </template>
 
@@ -38,13 +38,26 @@ export default {
   props: {
   },
 
-  data: () => ({
+  data() { return {
     svg: null,
     selectedElementIndex: null,
     selectionPreview: null,
     elementOrder: [],
     playbackInterval: null,
-  }),
+
+    // onMouseEnter: (evt) => {
+    //   console.log('enter', evt.target);
+    // },
+
+    // onMouseLeave: (evt) => {
+    //   console.log('exit', evt.target);
+    // },
+
+    onMouseDown: (evt) => {
+      const index = this.elements.indexOf(evt.target);
+      this.selectedElementIndex = (index >= 0 ? index : null);
+    },
+  }},
 
   watch: {
     svg(value, previous) {
@@ -52,20 +65,57 @@ export default {
       if (previous) {
         previous.remove();
       }
-      this.$refs.svgContainer.appendChild(value);
-      this.$refs.svgContainer.style.backgroundColor = value.style.backgroundColor;
+      if (value) {
+        value.style.margin = 'auto';
+        this.$refs.svgContainer.appendChild(value);
+        this.$refs.svgContainer.style.backgroundColor = value.style.backgroundColor;
+      }
+    },
+
+    elements(value, previous) {
+      previous.forEach((element) => {
+        // element.removeEventListener('mouseenter', this.onMouseEnter);
+        // element.removeEventListener('mouseleave', this.onMouseLeave);
+        element.removeEventListener('mousedown', this.onMouseDown);
+      });
+      value.forEach((element) => {
+        // element.addEventListener('mouseenter', this.onMouseEnter);
+        // element.addEventListener('mouseleave', this.onMouseLeave);
+        element.addEventListener('mousedown', this.onMouseDown);
+      });
     },
 
     selectedElement(value) {
+      if (!value) {
+        return;
+      }
+
       this.selectionPreview = value.cloneNode();
-      this.selectionPreview.style.strokeWidth = 4 * (this.selectionPreview.style.strokeWidth || 1);
+      const preview = this.selectionPreview;
+
+      if (preview.getAttribute('stroke-width') !== null) {
+        preview.setAttribute(
+          'stroke-width',
+          +preview.getAttribute('stroke-width') + 2);
+      } else if (preview.style.strokeWidth !== undefined) {
+        preview.style.strokeWidth += 2;
+      } else {
+        preview.strokeWidth = 2;
+      }
+
+      const stroke = preview.getAttribute('stroke') || preview.style.stroke;
+      if (!stroke || stroke === 'none') {
+        preview.setAttribute('stroke', 'black');
+      }
     },
 
     selectionPreview(value, previous) {
       if (previous) {
         previous.remove();
       }
-      this.svg.appendChild(value);
+      if (value) {
+        this.selectedElement.insertAdjacentElement('afterend', value);
+      }
     },
   },
 
@@ -92,8 +142,8 @@ export default {
       });
     },
 
-    onElementAccepted(evt) {
-      this.elementOrder.push(evt.target.value);
+    onElementAccepted() {
+      this.elementOrder.push(this.selectedElementIndex);
     },
 
     displayName(element, index) {
@@ -120,7 +170,7 @@ export default {
           } else {
             cancel();
           }
-        }, 1000);
+        }, 500);
       }
     },
 
@@ -176,7 +226,5 @@ export default {
 .canvas {
   overflow: auto;
   display: flex;
-  justify-content: center;
-  align-items: center;
 }
 </style>

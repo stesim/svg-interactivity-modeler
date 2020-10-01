@@ -1,31 +1,41 @@
 <template>
-  <div class="main">
+  <div class="main" @keydown.c.exact="setMode(SelectionMode.connect)" @keyup.s.exact="setMode(SelectionMode.select)">
     <list-box class="left-panel">
       <file-upload-button accept=".svg" @change="onFileSelected" />
 
       <h1>Available Elements</h1>
-      <select class="element-list" size="10" v-model="selectedElementIndex" @keyup.enter="onElementAccepted" :disabled="playbackInterval">
+      <select class="element-list" multiple size="10" v-model="selectedElementIndices" @keyup.enter="onElementAccepted" :disabled="playbackInterval">
         <option class="element-item" v-for="(element, index) in elements" :key="index" :value="index">
           {{displayName(element, index)}}
         </option>
       </select>
 
-      <h1>Element Order</h1>
-      <select class="element-list" size="10" v-model="selectedElementIndex" :disabled="playbackInterval">
+      <h1>Sequence</h1>
+      <select class="element-list" multiple size="10" v-model="selectedElementIndices" :disabled="playbackInterval">
         <option class="element-item" v-for="(elementId, index) in elementOrder" :key="index" :value="elementId">
           {{orderedDisplayName(elements[elementId], index)}}
         </option>
       </select>
 
+      <label>Tick interval (ms) <input type="number" min="100" v-model="tickInterval" :disabled="playbackInterval" /></label>
       <button @click="togglePlayback">{{!playbackInterval ? 'Play' : 'Stop'}}</button>
     </list-box>
-    <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" tabindex="0"></div>
+    <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" @mouseup="onElementClick" tabindex="0"></div>
+    <div class="status-bar">
+      <span>{{selectionMode}}</span>
+    </div>
   </div>
 </template>
 
 <script>
 import ListBox from './ListBox.vue'
 import FileUploadButton from './FileUploadButton.vue'
+
+const SelectionMode = Object.freeze({
+  select: 'SELECT',
+  connect: 'CONNECT',
+  target: 'TARGET',
+});
 
 export default {
   name: 'MainComponent',
@@ -39,23 +49,27 @@ export default {
   },
 
   data() { return {
+    SelectionMode,
+
     svg: null,
-    selectedElementIndex: null,
-    selectionPreview: null,
+    selectedElementIndices: [],
     elementOrder: [],
+    tickInterval: 500,
     playbackInterval: null,
+    selectionMode: SelectionMode.select,
 
-    // onMouseEnter: (evt) => {
-    //   console.log('enter', evt.target);
-    // },
-
-    // onMouseLeave: (evt) => {
-    //   console.log('exit', evt.target);
-    // },
-
-    onMouseDown: (evt) => {
-      const index = this.elements.indexOf(evt.target);
-      this.selectedElementIndex = (index >= 0 ? index : null);
+    onElementClick: (evt) => {
+      const target = evt.target.original || evt.target;
+      const targetIndex = this.elements.indexOf(target);
+      if (!evt.ctrlKey) {
+        this.selectedElementIndices = (targetIndex >= 0 ? [targetIndex] : []);
+      } else if (targetIndex >= 0) {
+        if (this.selectedElementIndices.includes(targetIndex)) {
+          this.selectedElementIndices = this.selectedElementIndices.filter((index) => index !== targetIndex);
+        } else {
+          this.selectedElementIndices = [...this.selectedElementIndices, targetIndex];
+        }
+      }
     },
   }},
 
@@ -72,50 +86,9 @@ export default {
       }
     },
 
-    elements(value, previous) {
-      previous.forEach((element) => {
-        // element.removeEventListener('mouseenter', this.onMouseEnter);
-        // element.removeEventListener('mouseleave', this.onMouseLeave);
-        element.removeEventListener('mousedown', this.onMouseDown);
-      });
-      value.forEach((element) => {
-        // element.addEventListener('mouseenter', this.onMouseEnter);
-        // element.addEventListener('mouseleave', this.onMouseLeave);
-        element.addEventListener('mousedown', this.onMouseDown);
-      });
-    },
-
-    selectedElement(value) {
-      if (!value) {
-        return;
-      }
-
-      this.selectionPreview = value.cloneNode();
-      const preview = this.selectionPreview;
-
-      if (preview.getAttribute('stroke-width') !== null) {
-        preview.setAttribute(
-          'stroke-width',
-          +preview.getAttribute('stroke-width') + 2);
-      } else if (preview.style.strokeWidth !== undefined) {
-        preview.style.strokeWidth += 2;
-      } else {
-        preview.strokeWidth = 2;
-      }
-
-      const stroke = preview.getAttribute('stroke') || preview.style.stroke;
-      if (!stroke || stroke === 'none') {
-        preview.setAttribute('stroke', 'black');
-      }
-    },
-
-    selectionPreview(value, previous) {
-      if (previous) {
-        previous.remove();
-      }
-      if (value) {
-        this.selectedElement.insertAdjacentElement('afterend', value);
-      }
+    selectedElementPreviews(value, previous) {
+      previous.forEach((preview) => preview.replaceWith(preview.original));
+      value.forEach((preview) => preview.original.replaceWith(preview));
     },
   },
 
@@ -128,8 +101,12 @@ export default {
         : []);
     },
 
-    selectedElement() {
-      return this.elements[this.selectedElementIndex];
+    selectedElements() {
+      return this.selectedElementIndices.map((index) => this.elements[index]);
+    },
+
+    selectedElementPreviews() {
+      return this.selectedElements.map((element) => this.createPreview(element));
     },
   },
 
@@ -143,7 +120,7 @@ export default {
     },
 
     onElementAccepted() {
-      this.elementOrder.push(this.selectedElementIndex);
+      this.elementOrder.push(...this.selectedElementIndices);
     },
 
     displayName(element, index) {
@@ -152,6 +129,32 @@ export default {
 
     orderedDisplayName(element, position) {
       return `${position + 1}.) ${this.displayName(element, this.elements.indexOf(element))}`;
+    },
+
+    createPreview(element) {
+      const preview = element.cloneNode()
+      preview.original = element;
+
+      if (preview.getAttribute('stroke-width') !== null) {
+        preview.setAttribute(
+          'stroke-width',
+          +preview.getAttribute('stroke-width') + 5);
+      } else if (preview.style.strokeWidth !== undefined) {
+        preview.style.strokeWidth += 5;
+      } else {
+        preview.strokeWidth = 5;
+      }
+
+      const stroke = preview.getAttribute('stroke') || preview.style.stroke;
+      if (!stroke || stroke === 'none') {
+        preview.setAttribute('stroke', 'black');
+      }
+
+      return preview;
+    },
+
+    setMode(mode) {
+      this.selectionMode = mode;
     },
 
     togglePlayback() {
@@ -165,18 +168,17 @@ export default {
         let i = 0;
         this.playbackInterval = setInterval(() => {
           if (i < this.elementOrder.length) {
-            this.selectedElementIndex = this.elementOrder[i];
+            this.selectedElementIndices = [this.elementOrder[i]];
             ++i;
           } else {
             cancel();
           }
-        }, 500);
+        }, this.tickInterval);
       }
     },
 
     reset() {
-      this.selectedElementIndex = null;
-      this.selectionPreview = null;
+      this.selectedElementIndices = [];
       this.elementOrder = [];
       clearInterval(this.playbackInterval);
       this.playbackInterval = null;
@@ -187,9 +189,10 @@ export default {
 
 <style scoped>
 .main {
+  height: 100vh;
   display: grid;
   grid-template-columns: 20em 1fr;
-  grid-template-rows: 100vh;
+  grid-template-rows: 1fr 2em;
 }
 
 .left-panel {
@@ -203,7 +206,7 @@ export default {
 }
 
 .left-panel h1 {
-  font-size: 125%;
+  font-size: 112.5%;
   text-align: center;
   background-color: #012;
   margin: 0.25em 0;
@@ -226,5 +229,14 @@ export default {
 .canvas {
   overflow: auto;
   display: flex;
+  box-shadow: inset 0 0 0.5em rgba(0, 0, 0, 0.5);
+}
+
+.status-bar {
+  grid-column: 1 / span 2;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  padding: 0.5em;
 }
 </style>

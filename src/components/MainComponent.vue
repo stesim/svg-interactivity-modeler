@@ -1,7 +1,7 @@
 <template>
   <div class="main" @keyup.esc.exact="setMode(Mode.SELECT)" @keydown.n.exact="setMode(Mode.NODES)" @keydown.c.exact="setMode(Mode.CONNECTORS)" @keydown.a.exact="setMode(Mode.ASSOCIATE)" @keydown.s.exact="setMode(Mode.SEQUENCE)">
-    <list-box class="left-panel">
-      <file-upload-button accept=".svg" @change="onFileSelected" />
+    <div class="left-panel">
+      <input type="file" accept=".svg" @change="onFileSelected" />
 
       <h1>Nodes</h1>
       <select class="element-list" multiple size="6" v-model="selectedElementIndices" :disabled="playbackInterval">
@@ -26,7 +26,7 @@
 
       <label>Tick interval (ms) <input type="number" min="100" v-model="tickInterval" :disabled="playbackInterval" /></label>
       <button @click="togglePlayback">{{!playbackInterval ? 'Play' : 'Stop'}}</button>
-    </list-box>
+    </div>
     <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" @mouseup="onElementClick" tabindex="0"></div>
     <div class="status-bar">
       <span>{{sequenceDisplayName(sequenceSelectionIndices)}}</span>
@@ -36,9 +36,6 @@
 </template>
 
 <script>
-import ListBox from './ListBox.vue'
-import FileUploadButton from './FileUploadButton.vue'
-
 const Mode = Object.freeze({
   SELECT: 'SELECT',
   NODES: 'NODES',
@@ -57,8 +54,6 @@ export default {
   name: 'MainComponent',
 
   components: {
-    ListBox,
-    FileUploadButton,
   },
 
   props: {
@@ -318,6 +313,8 @@ export default {
 
 .left-panel {
   background-color: #023;
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
 }
 

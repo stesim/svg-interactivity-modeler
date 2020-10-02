@@ -29,8 +29,12 @@
     </div>
     <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" @mouseup="onElementClick" tabindex="0"></div>
     <div class="status-bar">
-      <span>{{sequenceDisplayName(sequenceSelectionIndices)}}</span>
-      <span>{{currentMode}}</span>
+      <div class="status-label">{{sequenceDisplayName(sequenceSelectionIndices)}}</div>
+      <div>
+        <label v-for="mode in Mode" :key="mode" :class="{'mode-button': true, selected: currentMode === mode}">
+          <input type="radio" :value="mode" v-model="currentMode" class="hidden" />{{mode}}
+        </label>
+      </div>
     </div>
   </div>
 </template>
@@ -352,10 +356,33 @@ export default {
 
 .status-bar {
   grid-column: 1 / span 2;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   padding: 0.5em;
+}
+
+.status-label {
+  overflow: hidden;
+  height: 100%;
+  color: #bbb;
+  font-size: 0.875em;
+}
+
+.hidden {
+  display: none;
+}
+
+.mode-button {
+  margin: 0 0.125em;
+  padding: 0.25em;
+  cursor: pointer;
+}
+
+.mode-button.selected {
+  color: aqua;
+  box-shadow: inset 0 0 0.25em #000;
+  border-radius: 0.25em;
+  background-color: rgba(0, 0, 0, 0.125);
 }
 </style>

@@ -1,19 +1,26 @@
 <template>
-  <div class="main" @keydown.c.exact="setMode(SelectionMode.connect)" @keyup.s.exact="setMode(SelectionMode.select)">
+  <div class="main" @keyup.esc.exact="setMode(Mode.SELECT)" @keydown.n.exact="setMode(Mode.NODES)" @keydown.c.exact="setMode(Mode.CONNECTORS)" @keydown.a.exact="setMode(Mode.ASSOCIATE)" @keydown.s.exact="setMode(Mode.SEQUENCE)">
     <list-box class="left-panel">
       <file-upload-button accept=".svg" @change="onFileSelected" />
 
-      <h1>Available Elements</h1>
-      <select class="element-list" multiple size="10" v-model="selectedElementIndices" @keyup.enter="onElementAccepted" :disabled="playbackInterval">
-        <option class="element-item" v-for="(element, index) in elements" :key="index" :value="index">
-          {{displayName(element, index)}}
+      <h1>Nodes</h1>
+      <select class="element-list" multiple size="6" v-model="selectedElementIndices" :disabled="playbackInterval">
+        <option class="element-item" v-for="index in nodeElementIndices" :key="index" :value="index">
+          {{elementDisplayName(elements[index], index)}}
         </option>
       </select>
 
-      <h1>Sequence</h1>
-      <select class="element-list" multiple size="10" v-model="selectedElementIndices" :disabled="playbackInterval">
-        <option class="element-item" v-for="(elementId, index) in elementOrder" :key="index" :value="elementId">
-          {{orderedDisplayName(elements[elementId], index)}}
+      <h1>Connections</h1>
+      <select class="element-list" multiple size="6" v-model="selectedElementIndices" :disabled="playbackInterval">
+        <option class="element-item" v-for="index in connectorElementIndices" :key="index" :value="index">
+          {{elementDisplayName(elements[index], index)}}
+        </option>
+      </select>
+
+      <h1>Associations</h1>
+      <select class="element-list" size="6" :disabled="playbackInterval" @change="selectAssociation(elementAssociations[$event.target.value])">
+        <option class="element-item" v-for="(association, index) in elementAssociations" :key="index" :value="index">
+          {{associationDisplayName(association)}}
         </option>
       </select>
 
@@ -22,7 +29,8 @@
     </list-box>
     <div ref="svgContainer" class="canvas" @keyup.enter="onElementAccepted" @mouseup="onElementClick" tabindex="0"></div>
     <div class="status-bar">
-      <span>{{selectionMode}}</span>
+      <span>{{sequenceDisplayName(sequenceSelectionIndices)}}</span>
+      <span>{{currentMode}}</span>
     </div>
   </div>
 </template>
@@ -31,11 +39,19 @@
 import ListBox from './ListBox.vue'
 import FileUploadButton from './FileUploadButton.vue'
 
-const SelectionMode = Object.freeze({
-  select: 'SELECT',
-  connect: 'CONNECT',
-  target: 'TARGET',
+const Mode = Object.freeze({
+  SELECT: 'SELECT',
+  NODES: 'NODES',
+  CONNECTORS: 'CONNECTORS',
+  ASSOCIATE: 'ASSOCIATE',
+  SEQUENCE: 'SEQUENCE',
 });
+
+function toggleInArray(array, value) {
+  return (array.includes(value)
+    ? array.filter((element) => element !== value)
+    : [...array, value]);
+}
 
 export default {
   name: 'MainComponent',
@@ -49,28 +65,20 @@ export default {
   },
 
   data() { return {
-    SelectionMode,
+    Mode,
 
     svg: null,
-    selectedElementIndices: [],
-    elementOrder: [],
     tickInterval: 500,
     playbackInterval: null,
-    selectionMode: SelectionMode.select,
+    currentMode: Mode.SELECT,
 
-    onElementClick: (evt) => {
-      const target = evt.target.original || evt.target;
-      const targetIndex = this.elements.indexOf(target);
-      if (!evt.ctrlKey) {
-        this.selectedElementIndices = (targetIndex >= 0 ? [targetIndex] : []);
-      } else if (targetIndex >= 0) {
-        if (this.selectedElementIndices.includes(targetIndex)) {
-          this.selectedElementIndices = this.selectedElementIndices.filter((index) => index !== targetIndex);
-        } else {
-          this.selectedElementIndices = [...this.selectedElementIndices, targetIndex];
-        }
-      }
-    },
+    selectedElementIndices: [],
+    nodeElementIndices: [],
+    connectorElementIndices: [],
+    associationSelectionIndices: [],
+    elementAssociations: [],
+    sequenceSelectionIndices: [],
+    sequences: [],
   }},
 
   watch: {
@@ -86,7 +94,7 @@ export default {
       }
     },
 
-    selectedElementPreviews(value, previous) {
+    highlightElements(value, previous) {
       previous.forEach((preview) => preview.replaceWith(preview.original));
       value.forEach((preview) => preview.original.replaceWith(preview));
     },
@@ -101,12 +109,28 @@ export default {
         : []);
     },
 
-    selectedElements() {
-      return this.selectedElementIndices.map((index) => this.elements[index]);
+    highlightedElementIndices() {
+      if (this.currentMode === Mode.SELECT) {
+        return this.selectedElementIndices;
+      } else if (this.currentMode === Mode.NODES) {
+        return this.nodeElementIndices;
+      } else if (this.currentMode === Mode.CONNECTORS) {
+        return this.connectorElementIndices;
+      } else if (this.currentMode === Mode.ASSOCIATE) {
+        return this.associationSelectionIndices;
+      } else if (this.currentMode === Mode.SEQUENCE) {
+        return this.sequenceSelectionIndices;
+      } else {
+        return undefined;
+      }
     },
 
-    selectedElementPreviews() {
-      return this.selectedElements.map((element) => this.createPreview(element));
+    highlightedElements() {
+      return this.highlightedElementIndices.map((index) => this.elements[index]);
+    },
+
+    highlightElements() {
+      return this.highlightedElements.map((element) => this.createPreview(element));
     },
   },
 
@@ -119,16 +143,102 @@ export default {
       });
     },
 
-    onElementAccepted() {
-      this.elementOrder.push(...this.selectedElementIndices);
+    onElementClick(evt) {
+      const target = evt.target.original || evt.target;
+      const targetIndex = this.elements.indexOf(target);
+      if (this.currentMode === Mode.SELECT) {
+        if (!evt.ctrlKey) {
+          this.selectedElementIndices = (targetIndex >= 0 ? [targetIndex] : []);
+        } else if (targetIndex >= 0) {
+          this.selectedElementIndices = toggleInArray(this.selectedElementIndices, targetIndex);
+        }
+      } else if (targetIndex >= 0) {
+        if (this.currentMode === Mode.NODES) {
+          this.nodeElementIndices = toggleInArray(this.nodeElementIndices, targetIndex);
+        } else if (this.currentMode === Mode.CONNECTORS) {
+          this.connectorElementIndices = toggleInArray(this.connectorElementIndices, targetIndex);
+        } else if (this.currentMode === Mode.ASSOCIATE) {
+          if (this.associationSelectionIndices.length === 0) {
+            if (this.isNode(targetIndex)) {
+              this.associationSelectionIndices = [targetIndex];
+            }
+          } else if (targetIndex !== this.associationSelectionIndices[0]) {
+            if (this.isConnector(targetIndex)) {
+              this.associationSelectionIndices = toggleInArray(this.associationSelectionIndices, targetIndex);
+            } else if (this.isNode(targetIndex)) {
+              if (this.associationSelectionIndices.length > 1) {
+                this.associationSelectionIndices.push(targetIndex);
+                this.elementAssociations = [
+                  ...this.elementAssociations,
+                  this.associationSelectionIndices];
+                this.associationSelectionIndices =
+                  [this.associationSelectionIndices[this.associationSelectionIndices.length - 1]];
+              } else {
+                this.associationSelectionIndices = [targetIndex];
+              }
+            }
+          } else {
+            this.associationSelectionIndices = [];
+          }
+        } else if (this.currentMode === Mode.SEQUENCE) {
+          if (this.sequenceSelectionIndices.length === 0) {
+            if (this.elementAssociations.some(([start]) => start === targetIndex)) {
+              this.sequenceSelectionIndices = [targetIndex];
+            }
+          } else if (!this.sequenceSelectionIndices.includes(targetIndex)) {
+            const previousElement = this.sequenceSelectionIndices[this.sequenceSelectionIndices.length - 1];
+            const association = this.elementAssociations.find(
+              (association) => (association[0] === previousElement && association[association.length - 1] === targetIndex));
+            if (association) {
+              this.sequenceSelectionIndices = [...this.sequenceSelectionIndices, ...association.slice(1)];
+            }
+          } else {
+            const currentIndex = this.sequenceSelectionIndices.indexOf(targetIndex);
+            for (let i = currentIndex - 1; i >= 0; --i) {
+              if (this.isNode(this.sequenceSelectionIndices[i])) {
+                this.sequenceSelectionIndices = this.sequenceSelectionIndices.slice(0, i + 1);
+                return;
+              }
+            }
+            this.sequenceSelectionIndices = [];
+          }
+        }
+      }
     },
 
-    displayName(element, index) {
+    onElementAccepted() {
+      // ?
+    },
+
+    isNode(elementIndex) {
+      return this.nodeElementIndices.includes(elementIndex);
+    },
+
+    isConnector(elementIndex) {
+      return this.connectorElementIndices.includes(elementIndex);
+    },
+
+    elementDisplayName(element, index) {
       return `${element.tagName} [${index}]`;
     },
 
-    orderedDisplayName(element, position) {
-      return `${position + 1}.) ${this.displayName(element, this.elements.indexOf(element))}`;
+    elementDisplayNameByIndex(index) {
+      return this.elementDisplayName(this.elements[index], index);
+    },
+
+    associationDisplayName(association) {
+      return this.sequenceDisplayName(association);
+    },
+
+    sequenceDisplayName(sequence) {
+      return sequence
+        .filter((element) => this.isNode(element))
+        .map((element) => this.elementDisplayNameByIndex(element))
+        .join(' → ');
+    },
+
+    selectAssociation(association) {
+      this.selectedElementIndices = association;
     },
 
     createPreview(element) {
@@ -154,10 +264,14 @@ export default {
     },
 
     setMode(mode) {
-      this.selectionMode = mode;
+      this.currentMode = mode;
     },
 
     togglePlayback() {
+      if (this.currentMode !== Mode.SELECT) {
+        this.currentMode = Mode.SELECT;
+      }
+
       const cancel = () => {
         clearInterval(this.playbackInterval);
         this.playbackInterval = null;
@@ -167,8 +281,8 @@ export default {
       } else {
         let i = 0;
         this.playbackInterval = setInterval(() => {
-          if (i < this.elementOrder.length) {
-            this.selectedElementIndices = [this.elementOrder[i]];
+          if (i < this.sequenceSelectionIndices.length) {
+            this.selectedElementIndices = [this.sequenceSelectionIndices[i]];
             ++i;
           } else {
             cancel();
@@ -178,10 +292,17 @@ export default {
     },
 
     reset() {
-      this.selectedElementIndices = [];
-      this.elementOrder = [];
       clearInterval(this.playbackInterval);
       this.playbackInterval = null;
+      this.currentMode = Mode.SELECT;
+
+      this.selectedElementIndices = [];
+      this.nodeElementIndices = [];
+      this.connectorElementIndices = [];
+      this.associationSelectionIndices = [];
+      this.elementAssociations = [];
+      this.sequenceSelectionIndices = [];
+      this.sequences = [];
     },
   },
 }
@@ -235,7 +356,8 @@ export default {
 .status-bar {
   grid-column: 1 / span 2;
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: space-between;
   align-items: center;
   padding: 0.5em;
 }

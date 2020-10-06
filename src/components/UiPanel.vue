@@ -1,7 +1,7 @@
 <template>
   <div class="panel" :class="{collapsible, collapsed}">
     <div class="title-bar">
-      <span v-if="collapsible" class="collapse-button" @click="collapsed = !collapsed">
+      <span v-if="collapsible" class="collapse-button" @click="toggleCollapsed">
         {{collapsed ? '❯' : '▼'}}
       </span>
       {{title}}
@@ -14,7 +14,7 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 export default {
   props: {
@@ -28,11 +28,15 @@ export default {
     },
   },
 
-  setup() {
-    const collapsed = ref(false);
+  setup(props) {
+    const collapsedInternal = ref(false);
+    const collapsed = computed(() => props.collapsible && collapsedInternal.value);
+
+    const toggleCollapsed = () => { collapsedInternal.value = !collapsedInternal.value };
 
     return {
       collapsed,
+      toggleCollapsed,
     };
   },
 }

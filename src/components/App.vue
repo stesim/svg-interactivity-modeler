@@ -6,13 +6,17 @@
           <input type="file" accept=".svg" @change="onFileSelected" :disabled="svgIsLoading"/>
         </div>
       </ui-panel>
+      <ui-panel title="Editor layout" :collapsible="true" class="ui-panel">
+        <label class="list-radio-button"><input type="radio" value="column" v-model="editorLayout"/> Vertical</label>
+        <label class="list-radio-button"><input type="radio" value="row" v-model="editorLayout"/> Horizontal</label>
+      </ui-panel>
       <ui-panel title="Sandbox" :collapsible="true" class="ui-panel">
         Hello, world!
       </ui-panel>
     </div>
-    <div class="editor-panels">
-      <editor-panel collapsible class="ui-panel" defaultMode="nodes"/>
-      <editor-panel collapsible class="ui-panel" defaultMode="connectors"/>
+    <div class="editor-panels" :style="{flexDirection: editorLayout}">
+      <editor-panel :collapsible="editorLayout === 'column'" class="ui-panel" defaultMode="nodes"/>
+      <editor-panel :collapsible="editorLayout === 'column'" class="ui-panel" defaultMode="connectors"/>
     </div>
     <div class="status-bar">
       <div class="status-label">{{statusMessage}}</div>
@@ -64,11 +68,16 @@ export default {
 
     provide('getSvgElementKey', (element) => controller.getElementId(element));
 
+    // LAYOUT
+    const editorLayout = ref('column');
+
     return {
       statusMessage,
 
       onFileSelected,
       svgIsLoading,
+
+      editorLayout,
     };
   },
 }
@@ -121,20 +130,19 @@ body, html {
 
 .editor-panels {
   display: flex;
-  flex-direction: column;
-  margin: 0.5em;
 }
 
 .editor-panels > .ui-panel {
   flex-grow: 1;
-}
-
-.editor-panels > .ui-panel:not(:first-child) {
-  margin-top: 0.5em;
+  margin: 0.5em;
 }
 
 .editor-panels > .ui-panel.collapsed {
   flex-grow: 0;
+}
+
+.list-radio-button {
+  display: block;
 }
 
 .status-bar {

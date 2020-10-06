@@ -9,7 +9,7 @@
 </template>
 
 <script>
-import { computed, inject, reactive } from 'vue';
+import { computed, inject, ref } from 'vue';
 import SvgElementStrokeHighlight from './SvgElementStrokeHighlight.vue'
 import SvgManipulator from './SvgManipulator.vue'
 
@@ -27,7 +27,7 @@ export default {
     const controller = inject('controller');
     const {state} = controller;
 
-    const selection = reactive([]);
+    const selection = ref([]);
 
     const originalOf = inject('originalOf');
     const localCopyOf = inject('localCopyOf');
@@ -47,24 +47,28 @@ export default {
       if (!elementIsNode && !elementIsConnector) {
         return;
       }
-      if (selection.length === 0) {
+      if (selection.value.length === 0) {
         if (elementIsNode) {
-          selection.push(element);
+          selection.value.push(element);
         }
-      } else if (!selection.includes(element)) {
-        const previousIsNode = isNode(selection[selection.length - 1]);
-        if (!(previousIsNode && elementIsNode)) {
-          selection.push(element);
-          if (elementIsNode) {
-            controller.addNodeAssociation(selection);
-            selection.splice(0);
-            selection.push(element);
+      } else if (!selection.value.includes(element)) {
+        if (elementIsConnector || selection.value.length > 1) {
+          selection.value.push(element);
+        }
+        if (elementIsNode) {
+          if (selection.value.length > 1) {
+            controller.addNodeAssociation(selection.value);
           }
+          selection.value = [element];
         }
+      } else {
+        selection.value = selection.value.slice(
+          0,
+          selection.value.indexOf(element));
       }
     };
 
-    const localSelection = computed(() => selection.map(localCopyOf));
+    const localSelection = computed(() => selection.value.map(localCopyOf));
 
     return {
       getSvgElementKey: inject('getSvgElementKey'),

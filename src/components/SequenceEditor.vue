@@ -1,5 +1,11 @@
 <template>
-  <svg-manipulator class="manipulator" :svgNode="svg" @element-click="onElementClicked">
+  <svg-manipulator
+      class="manipulator"
+      :svgNode="svg"
+      @element-click="onElementClicked"
+      @keyup.enter.prevent="commitSequence"
+      tabindex="0"
+      >
     <svg-element-stroke-highlight
       v-for="element in localSelection"
       :key="getSvgElementKey(element)"
@@ -31,33 +37,36 @@ export default {
 
     const controller = inject('controller');
     const isNode = (element) => controller.isNode(element);
-    const isConnector = (element) => controller.isConnector(element);
 
     const onElementClicked = (localElement) => {
       const element = originalOf(localElement);
-      const elementIsNode = isNode(element);
-      const elementIsConnector = isConnector(element);
-      if (!elementIsNode && !elementIsConnector) {
+      if (!isNode(element)) {
         return;
       }
       if (selection.value.length === 0) {
-        if (elementIsNode) {
-          selection.value.push(element);
-        }
+        selection.value.push(element);
       } else if (!selection.value.includes(element)) {
-        if (elementIsConnector || selection.value.length > 1) {
-          selection.value.push(element);
-        }
-        if (elementIsNode) {
-          if (selection.value.length > 1) {
-            controller.addNodeAssociation(selection.value);
-          }
-          selection.value = [element];
+        const previousNode = selection.value[selection.value.length - 1];
+        const association = controller.getNodeAssociation(previousNode, element);
+        if (association) {
+          selection.value.push(...association.slice(1));
         }
       } else {
-        selection.value = selection.value.slice(
-          0,
-          selection.value.indexOf(element));
+        let previousNodeIndex = -1;
+        for (let i = selection.value.indexOf(element) - 1; i >= 0; --i) {
+          if (isNode(selection.value[i])) {
+            previousNodeIndex = i;
+            break;
+          }
+        }
+        selection.value.splice(previousNodeIndex + 1);
+      }
+    };
+
+    const commitSequence = () => {
+      if (selection.value.length > 1) {
+        controller.addSequence(selection.value);
+        selection.value = [];
       }
     };
 
@@ -67,6 +76,7 @@ export default {
       getSvgElementKey: inject('getSvgElementKey'),
 
       onElementClicked,
+      commitSequence,
 
       localSelection,
     };

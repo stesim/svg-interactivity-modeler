@@ -8,6 +8,7 @@ export default class AppController {
       nodeElements: [],
       connectorElements: [],
       nodeAssociations: [],
+      sequences: [],
     });
     this._readOnlyState = readonly(this._state);
 
@@ -17,6 +18,7 @@ export default class AppController {
       this._state.nodeElements.splice(0);
       this._state.connectorElements.splice(0);
       this._state.nodeAssociations.splice(0);
+      this._state.sequences.splice(0);
 
       this._elementToIdMap.clear();
       this._elementIdCounter = 0;
@@ -62,6 +64,10 @@ export default class AppController {
     }
   }
 
+  isNode(element) {
+    return this._state.nodeElements.includes(element);
+  }
+
   markConnector(element) {
     if (!this._state.connectorElements.includes(element)) {
       this._state.connectorElements.push(element);
@@ -80,8 +86,35 @@ export default class AppController {
     }
   }
 
+  isConnector(element) {
+    return this._state.connectorElements.includes(element);
+  }
+
   addNodeAssociation(connection) {
-    // TODO: validate connection elements (node -> connector... -> node)
+    if (connection.length < 3) {
+      throw new Error('node association must span at least start and end node and a connector');
+    }
+    if (!this.isNode(connection[0]) ||
+        !this.isNode(connection[connection.length - 1])) {
+      throw new Error('first and last element of association must be nodes');
+    }
+    if (connection.slice(1, -1).some((element) => !this.isConnector(element))) {
+      throw new Error('all but first and last element of association must be connectors');
+    }
     this._state.nodeAssociations.push([...connection]);
+  }
+
+  getNodeAssociation(from, to) {
+    return this._state.nodeAssociations.find(
+      (connection) => (connection[0] === from && connection[connection.length - 1] === to));
+  }
+
+  addSequence(sequence) {
+    if (!this.isNode(sequence[0]) ||
+        !this.isNode(sequence[sequence.length - 1])) {
+      throw new Error('first and last element of sequence must be nodes');
+    }
+    // TODO: check for consecutive nodes
+    this._state.sequences.push([...sequence]);
   }
 }

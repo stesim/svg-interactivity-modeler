@@ -8,8 +8,14 @@
       </div>
     </template>
     <template v-if="diagram">
+      <svg-manipulator
+        v-if="currentMode === Mode.OVERVIEW"
+        v-model:viewport="viewport"
+        :svgNode="diagram"
+        class="overview"
+        />
       <classifier-editor
-        v-if="currentMode === Mode.NODES"
+        v-else-if="currentMode === Mode.NODES"
         v-model:viewport="viewport"
         :svg="diagram"
         :markedElements="nodeElements"
@@ -29,6 +35,11 @@
         v-model:viewport="viewport"
         :svg="diagram"
         />
+      <sequence-editor
+        v-else-if="currentMode === Mode.SEQUENCE"
+        v-model:viewport="viewport"
+        :svg="diagram"
+        />
       <div v-else class="fallback-message">{{`Edit mode "${currentMode}" is not implemented.`}}</div>
     </template>
     <div v-else class="fallback-message">Please load a diagram.</div>
@@ -39,6 +50,8 @@
 import { computed, inject, provide, ref, watchEffect } from 'vue';
 import ClassifierEditor from './ClassifierEditor.vue'
 import NodeConnectionEditor from './NodeConnectionEditor.vue'
+import SequenceEditor from './SequenceEditor.vue'
+import SvgManipulator from './SvgManipulator.vue'
 import UiPanel from './UiPanel.vue'
 
 const Mode = Object.freeze({
@@ -57,6 +70,8 @@ export default {
   components: {
     ClassifierEditor,
     NodeConnectionEditor,
+    SequenceEditor,
+    SvgManipulator,
     UiPanel,
   },
 
@@ -156,7 +171,7 @@ export default {
   background-color: rgba(255, 255, 255, 0.125);
 }
 
-.svg-manipulator {
+.overview {
   width: 100%;
   height: 100%;
 }

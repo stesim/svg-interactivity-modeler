@@ -63,42 +63,42 @@ export default {
     };
 
     // VIEWING
-    const pointerEventPosition = ({clientX, clientY}) => [clientX, clientY];
-
-    let previousPanPosition = null;
+    let isPanning = false;
     const startPanning = (evt) => {
       rootSvg.value.setPointerCapture(evt.pointerId);
-      previousPanPosition = pointerEventPosition(evt);
+      isPanning = true;
     };
 
     const stopPanning = ({pointerId}) => {
-      previousPanPosition = null;
+      isPanning = false;
       rootSvg.value.releasePointerCapture(pointerId);
     };
 
-    const pan = (evt) => {
-      if (previousPanPosition) {
-        const currentPosition = pointerEventPosition(evt);
+    const pan = ({movementX, movementY}) => {
+      if (isPanning) {
         const {zoom, x, y} = props.viewport;
         emit('update:viewport', {
           zoom: zoom,
-          x: x + (currentPosition[0] - previousPanPosition[0]),
-          y: y + (currentPosition[1] - previousPanPosition[1]),
+          x: x + movementX,
+          y: y + movementY,
         });
-        previousPanPosition = currentPosition;
       }
     };
 
     const ZOOM_IN_FACTOR = Math.SQRT2;
     const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
-    const zoom = ({deltaY, offsetX, offsetY}) => {
+    const zoom = ({deltaY, clientX, clientY}) => {
+      const {left, top} = rootSvg.value.getBoundingClientRect();
+      const clickedX = clientX - left;
+      const clickedY = clientY - top;
+
       const zoomFactor = (deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR);
       const translateFactor = (zoomFactor - 1);
       const {zoom, x, y} = props.viewport;
       emit('update:viewport', {
         zoom: zoom * zoomFactor,
-        x: x + (x - offsetX) * translateFactor,
-        y: y + (y - offsetY) * translateFactor,
+        x: x + (x - clickedX) * translateFactor,
+        y: y + (y - clickedY) * translateFactor,
       });
     };
 

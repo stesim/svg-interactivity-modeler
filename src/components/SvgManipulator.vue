@@ -1,12 +1,13 @@
 <template>
   <svg
+      ref="root-svg"
       style="svg-manipulator"
       :style="{backgroundColor: (svgNode ? svgNode.style.backgroundColor : '')}"
       @mouseup.left="onMouseUp"
       @contextmenu.prevent
       @pointerdown.right.prevent="startPanning"
       @pointerup.right.prevent="stopPanning"
-      @pointermove="pan"
+      @pointermove.passive="pan"
       @wheel.prevent="zoom"
       >
     <g ref="external-svg-container" :transform="transform"/>
@@ -35,6 +36,7 @@ export default {
 
   setup(props, {emit}) {
     // INITIALIZATION
+    const rootSvg = ref(null);
     const externalSvgContainer = ref(null);
 
     const mountSvgNode = (node) => externalSvgContainer.value.appendChild(node);
@@ -61,20 +63,22 @@ export default {
     };
 
     // VIEWING
-    let previousPanPosition;
-    const startPanning = ({offsetX, offsetY, target, pointerId}) => {
-      target.setPointerCapture(pointerId);
-      previousPanPosition = [offsetX, offsetY];
+    const pointerEventPosition = ({clientX, clientY}) => [clientX, clientY];
+
+    let previousPanPosition = null;
+    const startPanning = (evt) => {
+      rootSvg.value.setPointerCapture(evt.pointerId);
+      previousPanPosition = pointerEventPosition(evt);
     };
 
-    const stopPanning = ({target, pointerId}) => {
-      previousPanPosition = undefined;
-      target.releasePointerCapture(pointerId);
+    const stopPanning = ({pointerId}) => {
+      previousPanPosition = null;
+      rootSvg.value.releasePointerCapture(pointerId);
     };
 
-    const pan = ({offsetX, offsetY}) => {
+    const pan = (evt) => {
       if (previousPanPosition) {
-        const currentPosition = [offsetX, offsetY];
+        const currentPosition = pointerEventPosition(evt);
         const {zoom, x, y} = props.viewport;
         emit('update:viewport', {
           zoom: zoom,
@@ -105,6 +109,7 @@ export default {
     });
 
     return {
+      'root-svg': rootSvg,
       'external-svg-container': externalSvgContainer,
 
       onMouseUp,

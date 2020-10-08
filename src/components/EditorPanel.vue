@@ -2,9 +2,7 @@
   <ui-panel title="Editor" class="canvas">
     <template #title-bar>
       <div class="mode-list">
-        <label v-for="mode in Mode" :key="mode" class="mode-button" :class="{selected: currentMode === mode}">
-          <input type="radio" :value="mode" v-model="currentMode" v-show="false"/>{{mode}}
-        </label>
+        <button-radio-button-list :options="Mode" v-model="currentMode"/>
       </div>
     </template>
     <template v-if="diagram">
@@ -48,6 +46,7 @@
 
 <script>
 import { computed, inject, provide, ref, watchEffect } from 'vue';
+import ButtonRadioButtonList from './ButtonRadioButtonList.vue'
 import ClassifierEditor from './ClassifierEditor.vue'
 import NodeConnectionEditor from './NodeConnectionEditor.vue'
 import SequenceEditor from './SequenceEditor.vue'
@@ -68,6 +67,7 @@ function getAllElements(root) {
 
 export default {
   components: {
+    ButtonRadioButtonList,
     ClassifierEditor,
     NodeConnectionEditor,
     SequenceEditor,
@@ -154,21 +154,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.mode-button {
-  margin: 0 0.125em;
-  padding: 0.25em;
-  cursor: pointer;
   font-size: 0.875em;
   font-weight: bold;
-}
-
-.mode-button.selected {
-  color: aqua;
-  box-shadow: inset 0 0 0.25em rgba(255, 255, 255, 0.25);
-  border-radius: 0.25em;
-  background-color: rgba(255, 255, 255, 0.125);
 }
 
 .overview {

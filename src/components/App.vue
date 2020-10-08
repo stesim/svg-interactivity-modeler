@@ -7,8 +7,9 @@
         </div>
       </ui-panel>
       <ui-panel title="Editor layout" :collapsible="true" class="ui-panel">
-        <label class="list-radio-button"><input type="radio" value="column" v-model="editorLayout"/> Vertical</label>
-        <label class="list-radio-button"><input type="radio" value="row" v-model="editorLayout"/> Horizontal</label>
+        <span style="font-weight: bold; font-size: 0.875em">
+          <button-radio-button-list :options="layouts" v-model="editorLayout"/>
+        </span>
       </ui-panel>
       <ui-panel title="Theme" :collapsible="true" class="ui-panel">
         <div style="display: grid; grid-template-columns: auto 1fr">
@@ -35,11 +36,13 @@
 <script>
 import { computed, onMounted, provide, ref } from 'vue';
 import AppController from '../app-controller'
+import ButtonRadioButtonList from './ButtonRadioButtonList.vue'
 import EditorPanel from './EditorPanel.vue'
 import UiPanel from './UiPanel.vue'
 
 export default {
   components: {
+    ButtonRadioButtonList,
     EditorPanel,
     UiPanel,
   },
@@ -77,6 +80,10 @@ export default {
     provide('getSvgElementKey', (element) => controller.getElementId(element));
 
     // LAYOUT
+    const layouts = {
+      row: 'HORIZONTAL',
+      column: 'VERTICAL',
+    };
     const editorLayout = ref('column');
 
     // THEMING
@@ -100,7 +107,9 @@ export default {
       onFileSelected,
       svgIsLoading,
 
+      layouts,
       editorLayout,
+
       theme,
       style,
     };
@@ -130,6 +139,7 @@ body, html {
   --theme-color-bg: hsl(var(--theme-hue), var(--theme-saturation), var(--theme-lightness));
   --theme-color-dark: hsl(var(--theme-hue), var(--theme-saturation-dark), var(--theme-lightness-dark));
   --theme-color-text: hsl(0, 0%, var(--theme-lightness-text));
+  --theme-color-text-dark: hsl(0, 0%, var(--theme-lightness-text-dark));
 
   background-color: var(--theme-color-bg);
   color: var(--theme-color-text);

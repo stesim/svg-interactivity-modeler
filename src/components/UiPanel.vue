@@ -54,7 +54,7 @@ export default {
   background-color: inherit;
   font-size: 0.875em;
   min-height: 1em;
-  background-color: #024;
+  background-color: var(--theme-color-dark);
   padding: 0.25em 0.25em;
 }
 

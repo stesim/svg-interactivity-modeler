@@ -1,5 +1,5 @@
 <template>
-  <div class="main" @keyup.esc.exact="setMode(Mode.OVERVIEW)" @keydown.n.exact="setMode(Mode.NODES)" @keydown.c.exact="setMode(Mode.CONNECTORS)" @keydown.a.exact="setMode(Mode.ASSOCIATE)" @keydown.s.exact="setMode(Mode.SEQUENCE)" tabindex="0">
+  <div class="main" :style="style" @keyup.esc.exact="setMode(Mode.OVERVIEW)" @keydown.n.exact="setMode(Mode.NODES)" @keydown.c.exact="setMode(Mode.CONNECTORS)" @keydown.a.exact="setMode(Mode.ASSOCIATE)" @keydown.s.exact="setMode(Mode.SEQUENCE)" tabindex="0">
     <div class="left-panel">
       <ui-panel title="Open diagram" :collapsible="true" class="ui-panel" style="overflow: hidden">
         <div>
@@ -9,6 +9,14 @@
       <ui-panel title="Editor layout" :collapsible="true" class="ui-panel">
         <label class="list-radio-button"><input type="radio" value="column" v-model="editorLayout"/> Vertical</label>
         <label class="list-radio-button"><input type="radio" value="row" v-model="editorLayout"/> Horizontal</label>
+      </ui-panel>
+      <ui-panel title="Theme" :collapsible="true" class="ui-panel">
+        <div style="display: grid; grid-template-columns: auto 1fr">
+          <template v-for="(value, key) in theme" :key="key">
+            <label style="margin-right: 0.5em">{{key}}</label>
+            <input type="range" min="0" :max="key === 'hue' ? 360 : 100" v-model="theme[key]"/>
+          </template>
+        </div>
       </ui-panel>
       <ui-panel title="Sandbox" :collapsible="true" class="ui-panel">
         Hello, world!
@@ -25,7 +33,7 @@
 </template>
 
 <script>
-import { provide, ref } from 'vue';
+import { computed, onMounted, provide, ref } from 'vue';
 import AppController from '../app-controller'
 import EditorPanel from './EditorPanel.vue'
 import UiPanel from './UiPanel.vue'
@@ -71,6 +79,21 @@ export default {
     // LAYOUT
     const editorLayout = ref('column');
 
+    // THEMING
+    const theme = ref({hue: 0, saturation: 0, lightness: 0});
+    onMounted(() => {
+      theme.value = {
+        hue: 210,
+        saturation: 25,
+        lightness: 20,
+      };
+    });
+    const style = computed(() => ({
+      '--theme-hue': theme.value.hue,
+      '--theme-saturation': `${theme.value.saturation}%`,
+      '--theme-lightness': `${theme.value.lightness}%`,
+    }));
+
     return {
       statusMessage,
 
@@ -78,6 +101,8 @@ export default {
       svgIsLoading,
 
       editorLayout,
+      theme,
+      style,
     };
   },
 }
@@ -85,8 +110,6 @@ export default {
 
 <style>
 body, html {
-  background-color: #2c3e50;
-  color: #eee;
   margin: 0;
   padding: 0;
 }
@@ -100,6 +123,16 @@ body, html {
 
 <style scoped>
 .main {
+  --theme-lightness-text: calc(4.5 * var(--theme-lightness));
+  --theme-lightness-text-dark: calc(0.8 * var(--theme-lightness-text));
+  --theme-saturation-dark: calc(4 * var(--theme-saturation));
+  --theme-lightness-dark: calc(0.67 * var(--theme-lightness));
+  --theme-color-bg: hsl(var(--theme-hue), var(--theme-saturation), var(--theme-lightness));
+  --theme-color-dark: hsl(var(--theme-hue), var(--theme-saturation-dark), var(--theme-lightness-dark));
+  --theme-color-text: hsl(0, 0%, var(--theme-lightness-text));
+
+  background-color: var(--theme-color-bg);
+  color: var(--theme-color-text);
   height: 100vh;
   display: grid;
   grid-template-columns: 20em 1fr;
@@ -120,7 +153,6 @@ body, html {
 
 .left-panel .ui-panel >>> .content {
   padding: 0.5em;
-  background-color: #2c3e50;
 }
 
 .ui-panel {
@@ -148,7 +180,7 @@ body, html {
 .status-bar {
   grid-column: 1 / span 2;
   padding: 0.5em;
-  background-color: #012;
+  background-color: var(--theme-color-dark);
   font-size: 0.875em;
   min-height: 1em;
 }
@@ -156,6 +188,6 @@ body, html {
 .status-label {
   overflow: hidden;
   height: 100%;
-  color: #bbb;
+  color: var(--theme-color-text-dark);
 }
 </style>

@@ -182,6 +182,6 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #bbb;
+  color: var(--theme-color-text-dark);
 }
 </style>

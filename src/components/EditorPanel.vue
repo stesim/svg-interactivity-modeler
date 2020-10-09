@@ -6,11 +6,10 @@
       </div>
     </template>
     <template v-if="diagram">
-      <svg-manipulator
-        v-if="currentMode === Mode.OVERVIEW"
+      <node-property-editor
+        v-if="currentMode === Mode.PROPERTIES"
         v-model:viewport="viewport"
-        :svgNode="diagram"
-        class="overview"
+        :svg="diagram"
         />
       <classifier-editor
         v-else-if="currentMode === Mode.NODES"
@@ -49,12 +48,12 @@ import { computed, inject, provide, ref, watchEffect } from 'vue';
 import ButtonRadioButtonList from './ButtonRadioButtonList.vue'
 import ClassifierEditor from './ClassifierEditor.vue'
 import NodeConnectionEditor from './NodeConnectionEditor.vue'
+import NodePropertyEditor from './NodePropertyEditor.vue'
 import SequenceEditor from './SequenceEditor.vue'
-import SvgManipulator from './SvgManipulator.vue'
 import UiPanel from './UiPanel.vue'
 
 const Mode = Object.freeze({
-  OVERVIEW: 'OVERVIEW',
+  PROPERTIES: 'PROPERTIES',
   NODES: 'NODES',
   CONNECTORS: 'CONNECTORS',
   ASSOCIATE: 'ASSOCIATE',
@@ -70,15 +69,15 @@ export default {
     ButtonRadioButtonList,
     ClassifierEditor,
     NodeConnectionEditor,
+    NodePropertyEditor,
     SequenceEditor,
-    SvgManipulator,
     UiPanel,
   },
 
   props: {
     defaultMode: {
       type: String,
-      default: Mode.OVERVIEW,
+      default: Mode.PROPERTIES,
     },
   },
 

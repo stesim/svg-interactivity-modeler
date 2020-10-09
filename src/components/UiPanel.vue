@@ -2,9 +2,9 @@
   <div class="panel" :class="{collapsible, collapsed}">
     <div class="title-bar">
       <span v-if="collapsible" class="collapse-button" @click="toggleCollapsed">
-        {{collapsed ? '❯' : '▼'}}
+        {{`${collapsed ? '❯' : '▼'} ${title}`}}
       </span>
-      {{title}}
+      <span v-else>{{title}}</span>
       <slot name="title-bar"></slot>
     </div>
     <div v-show="!collapsed" class="content">
@@ -58,13 +58,8 @@ export default {
   padding: 0.25em 0.25em;
 }
 
-.collapsible .title-bar {
-  grid-template-columns: auto auto 1fr;
-}
-
 .collapse-button {
   display: inline-block;
-  width: 1.25em;
   cursor: pointer;
 }
 </style>
